@@ -1,0 +1,5 @@
+Enabled,Source_FeatureClass,Source_Field,Source_Code,Target_FeatureClass,Target_Field,Target_Code,Description
+Yes,Road,Type,1,Road,Type,NH,National Highway
+Yes,Road,Type,2,Road,Type,SH,State Highway
+Yes,LULC,Type,1,LULC,Type,Agriculture,Agriculture
+Yes,LULC,Type,2,LULC,Type,Forest,Forest

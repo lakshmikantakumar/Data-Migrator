@@ -1,0 +1,53 @@
+# Python bytecode, test, and type-checker artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Virtual environments and local Python configuration
+.venv/
+venv/
+env/
+ENV/
+.python-version
+
+# ArcGIS Pro local and generated data
+*.gdb/
+*.geodatabase/
+*.sde
+*.lock
+*.sr.lock
+*.aprx~
+*.aprx.bak
+
+# GMF generated operational outputs
+logs/
+reports/
+Migration.log
+Validation_Report.csv
+Migration_Summary.csv
+FeatureClass_Report.csv
+Field_Report.csv
+Domain_Report.csv
+Warning_Report.csv
+Error_Report.csv
+Audit_Report.csv
+
+# Local configuration copies may contain project-specific paths or values.
+# Keep reusable examples under configs/ tracked explicitly.
+config.local/
+*.local.csv
+
+# IDE and operating-system files
+.vscode/
+.idea/
+.agents/
+*.code-workspace
+.DS_Store
+Thumbs.db
+desktop.ini

@@ -1,283 +1,318 @@
-# =============================================================================
-# ArcGIS Pro Geodatabase Migration Framework
-# -----------------------------------------------------------------------------
-# File        : Transformer.pyt
-# Description : ArcGIS Pro Python Toolbox for Geodatabase Migration Framework
-#
-# Authors      : Dr. Lakshmi Kantakumar Neelamsetti and Dr. Shayama Mohan
-# Organization: Survey of India
-#
-# Version     : 1.0.0
-# ArcGIS Pro  : 3.x
-# Python      : 3.x
-#
-# -----------------------------------------------------------------------------
-# Copyright (c) Survey of India
-#
-# This toolbox provides a configurable framework for migrating Feature Classes
-# from a Source Geodatabase to a Target Geodatabase using a Template
-# Geodatabase and CSV-based migration rules.
-#
-# Current Version:
-#     • Supports Feature Classes only
-#     • Uses Template GDB as target schema
-#     • CSV Driven Configuration
-#     • Validation Engine
-#     • Migration Engine
-#     • Reporting Engine
-#
-# =============================================================================
+"""ArcGIS Pro Python toolbox entry point for GMF.
+
+This toolbox declares the ArcGIS Pro user interface only.  All workflow logic
+is delegated to :mod:`transformer`, making the controller independently
+testable outside ArcGIS Pro.
+"""
+
+from __future__ import annotations
 
 import os
+from typing import Sequence
+
 import arcpy
 
+import transformer as controller
+from utils.constants import (
+    EXECUTION_MODES,
+    FC_MAPPING_FILE,
+    FIELD_MAPPING_FILE,
+    DOMAIN_MAPPING_FILE,
+    LOOKUP_FILE,
+    MODE_MIGRATE_ONLY,
+    MODE_VALIDATE_AND_MIGRATE,
+)
 
-# =============================================================================
-# TOOLBOX CLASS
-# =============================================================================
 
-class Toolbox(object):
+class Toolbox:
+    """Define the Geodatabase Migration Framework ArcGIS Python toolbox.
+
+    Args:
+        None.
+
+    Raises:
+        None.
+
+    Notes:
+        ArcGIS Pro discovers this class automatically when the .pyt is added.
     """
-    Defines the Python Toolbox.
-    """
 
-    def __init__(self):
+    def __init__(self) -> None:
+        """Initialize toolbox metadata and registered geoprocessing tools.
 
+        Args:
+            None.
+
+        Returns:
+            None.
+
+        Raises:
+            None.
+
+        Notes:
+            One top-level tool exposes the complete GMF lifecycle.
+        """
         self.label = "Geodatabase Migration Framework"
         self.alias = "GMF"
-
         self.description = (
-            "Framework for migrating Feature Classes between "
-            "Enterprise/File Geodatabases using configurable "
-            "CSV mapping files."
+            "Migrates feature classes into a copied template geodatabase "
+            "using validated CSV configuration rules."
         )
-
-        self.tools = [
-            GeodatabaseMigration
-        ]
+        self.tools = [GeodatabaseMigration]
 
 
-# =============================================================================
-# TOOL CLASS
-# =============================================================================
+class GeodatabaseMigration:
+    """Expose the main Transformer controller as an ArcGIS Pro tool.
 
-class GeodatabaseMigration(object):
+    Args:
+        None.
+
+    Raises:
+        None.
+
+    Notes:
+        This class only maps ArcGIS parameter values to transformer.run.
     """
-    Main Migration Tool
-    """
 
-    def __init__(self):
+    def __init__(self) -> None:
+        """Initialize tool metadata.
 
+        Args:
+            None.
+
+        Returns:
+            None.
+
+        Raises:
+            None.
+
+        Notes:
+            Foreground execution keeps ArcGIS messages and progress visible.
+        """
         self.label = "Geodatabase Migration"
-
         self.description = (
-            "Migrates Feature Classes from Source GDB to "
-            "Target GDB using Template GDB and Configuration CSV files."
+            "Validate configuration and migrate feature classes from a source "
+            "geodatabase into an output copied from the template geodatabase."
         )
-
         self.canRunInBackground = False
 
+    def getParameterInfo(self) -> Sequence[arcpy.Parameter]:
+        """Create the ArcGIS Pro input and output parameter definitions.
 
-    # -------------------------------------------------------------------------
-    # PARAMETERS
-    # -------------------------------------------------------------------------
-    def getParameterInfo(self):
+        Args:
+            None.
 
-        params = []
+        Returns:
+            Ordered ArcGIS parameter collection.
 
-        # ---------------------------------------------------------
-        # Configuration Folder
-        # ---------------------------------------------------------
+        Raises:
+            None.
 
-        p0 = arcpy.Parameter(
+        Notes:
+            Parameter order mirrors transformer.run input order where possible.
+        """
+        configuration_folder = arcpy.Parameter(
             displayName="Configuration Folder",
             name="configuration_folder",
             datatype="DEFolder",
             parameterType="Required",
-            direction="Input"
+            direction="Input",
         )
 
-        params.append(p0)
-
-        # ---------------------------------------------------------
-        # Source GDB
-        # ---------------------------------------------------------
-
-        p1 = arcpy.Parameter(
-            displayName="Source Geodatabase",
+        source_gdb = arcpy.Parameter(
+            displayName="Source GDB",
             name="source_gdb",
             datatype="DEWorkspace",
             parameterType="Required",
-            direction="Input"
+            direction="Input",
         )
 
-        params.append(p1)
-
-        # ---------------------------------------------------------
-        # Template GDB
-        # ---------------------------------------------------------
-
-        p2 = arcpy.Parameter(
-            displayName="Template Geodatabase",
+        template_gdb = arcpy.Parameter(
+            displayName="Template GDB",
             name="template_gdb",
             datatype="DEWorkspace",
             parameterType="Required",
-            direction="Input"
+            direction="Input",
         )
 
-        params.append(p2)
-
-        # ---------------------------------------------------------
-        # Output GDB
-        # ---------------------------------------------------------
-
-        p3 = arcpy.Parameter(
-            displayName="Output Geodatabase",
+        output_gdb = arcpy.Parameter(
+            displayName="Output GDB",
             name="output_gdb",
             datatype="DEWorkspace",
             parameterType="Required",
-            direction="Output"
+            direction="Output",
         )
 
-        params.append(p3)
-
-        # ---------------------------------------------------------
-        # Mode
-        # ---------------------------------------------------------
-
-        p4 = arcpy.Parameter(
+        execution_mode = arcpy.Parameter(
             displayName="Execution Mode",
             name="execution_mode",
             datatype="GPString",
             parameterType="Required",
-            direction="Input"
+            direction="Input",
         )
+        execution_mode.filter.type = "ValueList"
+        execution_mode.filter.list = list(EXECUTION_MODES)
+        execution_mode.value = MODE_VALIDATE_AND_MIGRATE
 
-        p4.filter.type = "ValueList"
-
-        p4.filter.list = [
-            "Validate Only",
-            "Migrate Only",
-            "Validate + Migrate",
-            "Generate Report"
-        ]
-
-        p4.value = "Validate + Migrate"
-
-        params.append(p4)
-
-        # ---------------------------------------------------------
-        # Generate Log
-        # ---------------------------------------------------------
-
-        p5 = arcpy.Parameter(
-            displayName="Generate Detailed Log",
+        generate_log = arcpy.Parameter(
+            displayName="Generate Log",
             name="generate_log",
             datatype="GPBoolean",
             parameterType="Optional",
-            direction="Input"
+            direction="Input",
         )
+        generate_log.value = True
 
-        p5.value = True
-
-        params.append(p5)
-
-        # ---------------------------------------------------------
-        # Overwrite Output
-        # ---------------------------------------------------------
-
-        p6 = arcpy.Parameter(
-            displayName="Overwrite Existing Output",
+        overwrite_output = arcpy.Parameter(
+            displayName="Overwrite Output",
             name="overwrite_output",
             datatype="GPBoolean",
             parameterType="Optional",
-            direction="Input"
+            direction="Input",
         )
+        overwrite_output.value = False
 
-        p6.value = False
+        return [
+            configuration_folder,
+            source_gdb,
+            template_gdb,
+            output_gdb,
+            execution_mode,
+            generate_log,
+            overwrite_output,
+        ]
 
-        params.append(p6)
+    def isLicensed(self) -> bool:
+        """Return whether the tool may run with the current ArcGIS license.
 
-        return params
+        Args:
+            None.
 
+        Returns:
+            Always ``True`` because GMF uses base ArcPy cursor operations.
 
-    # -------------------------------------------------------------------------
-    # LICENSE
-    # -------------------------------------------------------------------------
-    def isLicensed(self):
+        Raises:
+            None.
+
+        Notes:
+            Environment-specific data permissions are validated at run time.
+        """
         return True
 
+    def updateParameters(self, parameters: Sequence[arcpy.Parameter]) -> None:
+        """Apply responsive ArcGIS UI behavior to parameter values.
 
-    # -------------------------------------------------------------------------
-    # PARAMETER VALIDATION
-    # -------------------------------------------------------------------------
-    def updateParameters(self, parameters):
+        Args:
+            parameters: ArcGIS parameter collection.
 
-        return
+        Returns:
+            None.
 
+        Raises:
+            None.
 
-    # -------------------------------------------------------------------------
-    # PARAMETER MESSAGES
-    # -------------------------------------------------------------------------
-    def updateMessages(self, parameters):
+        Notes:
+            Output remains visible in every mode so reports and logs have a
+            deterministic sibling-folder location.
+        """
+        if parameters[4].valueAsText == "":
+            parameters[4].value = MODE_VALIDATE_AND_MIGRATE
 
-        return
+    def updateMessages(self, parameters: Sequence[arcpy.Parameter]) -> None:
+        """Add early, non-mutating ArcGIS parameter validation messages.
 
+        Args:
+            parameters: ArcGIS parameter collection.
 
-    # -------------------------------------------------------------------------
-    # EXECUTION
-    # -------------------------------------------------------------------------
-    def execute(self, parameters, messages):
+        Returns:
+            None.
 
+        Raises:
+            None.
+
+        Notes:
+            Deep schema and mapping checks belong to Validator after execution.
+        """
+        configuration_folder = parameters[0].valueAsText
+        template_gdb = parameters[2].valueAsText
+        output_gdb = parameters[3].valueAsText
+        execution_mode = parameters[4].valueAsText
+
+        if configuration_folder and os.path.isdir(configuration_folder):
+            missing = [
+                filename for filename in (FC_MAPPING_FILE, FIELD_MAPPING_FILE, DOMAIN_MAPPING_FILE, LOOKUP_FILE)
+                if not os.path.isfile(os.path.join(configuration_folder, filename))
+            ]
+            if missing:
+                parameters[0].setErrorMessage(
+                    "Configuration Folder is missing required file(s): {}.".format(", ".join(missing))
+                )
+
+        if (
+            execution_mode in {MODE_MIGRATE_ONLY, MODE_VALIDATE_AND_MIGRATE}
+            and template_gdb and output_gdb
+            and os.path.normcase(os.path.abspath(template_gdb)) == os.path.normcase(os.path.abspath(output_gdb))
+        ):
+            parameters[3].setErrorMessage(
+                "Output GDB must be different from Template GDB to protect the template schema."
+            )
+
+    def execute(self, parameters: Sequence[arcpy.Parameter], messages: object) -> None:
+        """Run the main Transformer controller from ArcGIS Pro values.
+
+        Args:
+            parameters: ArcGIS parameter collection in getParameterInfo order.
+            messages: ArcGIS geoprocessing messages object.
+
+        Returns:
+            None.
+
+        Raises:
+            arcpy.ExecuteError: If controller returns a non-success status.
+
+        Notes:
+            Controller Logger messages already reach ArcGIS when Generate Log
+            is selected.  This method adds concise final status and report links.
+        """
         configuration_folder = parameters[0].valueAsText
         source_gdb = parameters[1].valueAsText
         template_gdb = parameters[2].valueAsText
         output_gdb = parameters[3].valueAsText
         execution_mode = parameters[4].valueAsText
-        generate_log = parameters[5].value
-        overwrite_output = parameters[6].value
+        generate_log = bool(parameters[5].value)
+        overwrite_output = bool(parameters[6].value)
 
         arcpy.AddMessage("=" * 70)
         arcpy.AddMessage("Geodatabase Migration Framework")
-        arcpy.AddMessage("Version : 1.0.0")
+        arcpy.AddMessage("Execution mode: {}".format(execution_mode))
         arcpy.AddMessage("=" * 70)
 
-        arcpy.AddMessage(f"Configuration Folder : {configuration_folder}")
-        arcpy.AddMessage(f"Source GDB           : {source_gdb}")
-        arcpy.AddMessage(f"Template GDB         : {template_gdb}")
-        arcpy.AddMessage(f"Output GDB           : {output_gdb}")
-        arcpy.AddMessage(f"Execution Mode       : {execution_mode}")
-        arcpy.AddMessage("")
+        try:
+            result = controller.run(
+                configuration_folder=configuration_folder,
+                source_gdb=source_gdb,
+                template_gdb=template_gdb,
+                output_gdb=output_gdb,
+                execution_mode=execution_mode,
+                overwrite_output=overwrite_output,
+                generate_log=generate_log,
+            )
+        except Exception as error:
+            arcpy.AddError("Unable to start GMF controller: {}".format(error))
+            raise arcpy.ExecuteError
 
-        # -------------------------------------------------------------
-        # Future Modules
-        # -------------------------------------------------------------
-        #
-        # rules.load_configuration()
-        #
-        # validator.validate()
-        #
-        # migrator.migrate()
-        #
-        # report.generate()
-        #
-        # -------------------------------------------------------------
+        if result.report_paths is not None:
+            arcpy.AddMessage("Reports generated:")
+            for report_path in result.report_paths.__dict__.values():
+                arcpy.AddMessage("  {}".format(report_path))
+        if result.log_path:
+            arcpy.AddMessage("Migration log: {}".format(result.log_path))
 
-        if execution_mode == "Validate Only":
+        if result.succeeded:
+            arcpy.AddMessage("GMF completed successfully: {}".format(result.message))
+            if result.output_gdb:
+                parameters[3].value = result.output_gdb
+            return
 
-            arcpy.AddMessage("Validation module will be executed.")
-
-        elif execution_mode == "Migrate Only":
-
-            arcpy.AddMessage("Migration module will be executed.")
-
-        elif execution_mode == "Validate + Migrate":
-
-            arcpy.AddMessage("Validation followed by Migration.")
-
-        elif execution_mode == "Generate Report":
-
-            arcpy.AddMessage("Report generation module will be executed.")
-
-        arcpy.AddMessage("")
-        arcpy.AddMessage("Framework initialized successfully.")
+        arcpy.AddError("GMF finished with status {}: {}".format(result.status.value, result.message))
+        raise arcpy.ExecuteError

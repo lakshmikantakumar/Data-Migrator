@@ -1,0 +1,5 @@
+Enabled,Source_Dataset,Source_FeatureClass,Target_Dataset,Target_FeatureClass,Rule,Filter,Geometry_Rule
+Yes,Transportation,Road,Transportation,Road,COPY,,
+Yes,Utility,Pole,Utility,ElectricPole,SPLIT,TYPE='ELEC',
+Yes,Utility,Pole,Utility,TelephonePole,SPLIT,TYPE='TEL',
+Yes,Hydro,River,Hydro,Watercourse,COPY,,

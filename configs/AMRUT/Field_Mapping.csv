@@ -1,0 +1,6 @@
+Enabled,Source_FeatureClass,Source_Field,Target_FeatureClass,Target_Field,Rule,Parameter,Default_Value
+Yes,Road,ROAD_NAME,Road,Name,COPY,,
+Yes,Road,ROAD_TYPE,Road,Type,DOMAIN,RoadType,
+Yes,Road,,Road,Status,DEFAULT,,Active
+Yes,Road,,Road,TopoID,UUID,,
+Yes,Building,FLOORS,Building,Height,EXPRESSION,!FLOORS!*3,

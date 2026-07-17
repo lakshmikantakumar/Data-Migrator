@@ -1,0 +1,5 @@
+Column,Required,Description
+Lookup_Name,Yes,Lookup table name
+Source_Value,Yes,Source value
+Target_Value,Yes,Target value
+Description,No,Comments
